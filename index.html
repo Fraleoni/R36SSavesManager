@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>R36S Saves Manager</title>
+  <link rel="icon" href="/console.png" type="image/png">
+  <style>
+    :root { --ink:#252e2a; --muted:#65736b; --paper:#f6f8f5; --line:#d9e0d9; --green:#256247; --pale:#e6f0e6; --red:#9f3d32; --yellow:#edf2b4; }
+    * { box-sizing:border-box; letter-spacing:0; }
+    [hidden] { display:none!important; }
+    body { margin:0; color:var(--ink); background:var(--paper); font:15px/1.5 "Trebuchet MS", sans-serif; }
+    button,input,select { font:inherit; }
+    button,a,input,select { -webkit-tap-highlight-color:transparent; }
+    button { min-height:42px; padding:9px 16px; border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:5px; cursor:pointer; font-weight:700; }
+    button:hover:not(:disabled) { border-color:var(--green); background:var(--pale); }
+    button:disabled { opacity:.48; cursor:not-allowed; }
+    button.primary { background:var(--green); color:white; border-color:var(--green); }
+    button.primary:hover:not(:disabled) { background:#174b34; }
+    button.secondary { border-color:var(--green); color:var(--green); }
+    button.danger { border-color:var(--red); color:var(--red); }
+    button.danger:hover:not(:disabled) { background:#fcf0ed; border-color:var(--red); }
+    :focus-visible { outline:3px solid #85a252; outline-offset:3px; }
+    header { background:#fff; border-bottom:1px solid var(--line); }
+    .header-inner { max-width:1280px; margin:auto; padding:23px 32px; display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    .brand-img { width:32px; height:42px; image-rendering:pixelated; flex:none; }
+    h1,h2,h3,p { margin:0; }
+    h1 { font-family:Bahnschrift,"Trebuchet MS",sans-serif; font-size:24px; line-height:1.2; font-weight:600; }
+    .brand-sub { font-size:12px; color:var(--muted); margin-top:3px; }
+    .header-actions { margin-left:auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap; max-width:100%; }
+    .header-actions select { width:auto; font-size:13px; }
+    .badge { font-size:12px; font-weight:700; padding:4px 9px; background:var(--pale); color:var(--green); border-radius:3px; }
+    .badge.demo { color:#515a19; background:var(--yellow); }
+    main { max-width:1280px; margin:auto; padding:30px 32px 48px; }
+    .page-heading { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
+    h2 { font-family:Bahnschrift,"Trebuchet MS",sans-serif; font-size:28px; line-height:1.2; font-weight:600; }
+    h3 { font-size:17px; font-weight:700; }
+    .muted { color:var(--muted); font-size:13px; }
+    .layout { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(300px,.85fr); gap:36px; align-items:start; }
+    .library { min-width:0; }
+    .import { min-width:0; border-left:1px solid var(--line); padding-left:30px; }
+    .section-heading { display:flex; gap:12px; align-items:center; margin-bottom:20px; }
+    .step { color:var(--green); font:bold 13px Consolas,monospace; border-bottom:2px solid var(--green); padding-bottom:3px; }
+    label.field { display:block; font-size:13px; font-weight:700; margin-bottom:7px; }
+    input[type=search],input[type=password],select { width:100%; min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:5px; color:var(--ink); background:#fff; }
+    .filters { display:grid; grid-template-columns:minmax(140px,.7fr) minmax(0,1fr); gap:14px; margin-bottom:22px; }
+    .list-head { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); padding-bottom:8px; border-bottom:1px solid var(--line); }
+    .rom-list { min-height:224px; }
+    .rom-row { display:grid; grid-template-columns:20px minmax(0,1fr) 76px; gap:10px; align-items:center; padding:15px 10px; border-bottom:1px solid var(--line); min-height:72px; cursor:pointer; }
+    .rom-row:hover { background:#edf2ec; }
+    .rom-row.selected { background:var(--pale); box-shadow:inset 3px 0 var(--green); }
+    input[type=radio],input[type=checkbox] { accent-color:var(--green); width:17px; height:17px; margin:0; flex:none; }
+    .rom-name { display:block; font-size:14px; font-weight:700; overflow-wrap:anywhere; }
+    .rom-detail { display:block; color:var(--muted); font-size:11px; overflow-wrap:anywhere; margin-top:3px; }
+    .saved { font-size:11px; color:var(--green); text-align:right; }
+    .unsaved { font-size:11px; color:var(--muted); text-align:right; }
+    .empty { padding:44px 16px; text-align:center; color:var(--muted); border-bottom:1px solid var(--line); }
+    .pagination { display:flex; align-items:center; justify-content:space-between; padding-top:16px; gap:10px; }
+    .page-controls { display:flex; gap:6px; align-items:center; }
+    .icon-button { width:38px; min-height:38px; padding:0; font-size:20px; }
+    .text-button { min-height:36px; padding:4px 8px; font-size:12px; background:transparent; }
+    .upload { padding:18px; border:1px dashed #9cab9e; border-radius:5px; background:repeating-linear-gradient(135deg,#fff,#fff 10px,#fafcf9 10px,#fafcf9 11px); }
+    .upload.drag-active { border-color:var(--green); background:var(--pale); outline:2px solid var(--green); outline-offset:3px; }
+    input[type=file] { display:block; max-width:100%; width:100%; font-size:12px; }
+    input::file-selector-button { font:inherit; font-weight:700; color:var(--green); background:var(--pale); border:0; border-radius:3px; padding:10px; margin-right:10px; cursor:pointer; }
+    .file-info { font-size:12px; margin-top:10px; color:var(--muted); overflow-wrap:anywhere; }
+    .selection { padding:20px 0; }
+    .eyebrow { display:block; font-size:11px; color:var(--muted); font-weight:700; margin-bottom:6px; text-transform:uppercase; }
+    .selected-name { font-size:14px; font-weight:700; overflow-wrap:anywhere; }
+    .full { width:100%; }
+    .preview { border-top:1px solid var(--line); margin-top:24px; padding-top:20px; }
+    .path { display:block; font:12px/1.7 Consolas,monospace; overflow-wrap:anywhere; margin-top:8px; background:#eef1eb; padding:12px; border-radius:3px; }
+    .preview-state { font-size:13px; font-weight:700; color:var(--green); margin:12px 0; }
+    .preview-state.warning { color:var(--red); }
+    .checks { display:grid; gap:12px; margin:18px 0; }
+    .check { display:flex; align-items:flex-start; gap:10px; font-size:13px; cursor:pointer; }
+    .check input { margin-top:2px; }
+    .notice { border-left:3px solid var(--red); padding:12px 16px; background:#fcf0ed; color:#7e3027; overflow-wrap:anywhere; margin-bottom:24px; font-size:14px; }
+    .success { background:var(--pale); border-color:var(--green); color:#1b5138; margin-top:20px; margin-bottom:0; }
+    .success .path { background:transparent; padding:8px 0; }
+    .success button { margin-top:10px; }
+    .login { max-width:360px; margin:55px auto; }
+    .login h2 { margin-bottom:24px; }
+    .login button { margin-top:18px; }
+    footer { margin-top:40px; padding-top:16px; border-top:1px solid var(--line); display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; font:11px Consolas,monospace; color:var(--muted); }
+    @media(max-width:800px) { .layout { grid-template-columns:1fr; gap:32px; } .import { border-left:0; padding-left:0; border-top:1px solid var(--line); padding-top:24px; } .rom-list { min-height:140px; } main { padding:24px 20px; } .header-inner { padding:20px; } }
+    @media(max-width:420px) { h1 { font-size:20px; } .header-actions { width:100%; margin-left:0; } .filters { grid-template-columns:1fr; gap:12px; } h2 { font-size:24px; } .rom-row { grid-template-columns:18px minmax(0,1fr) 60px; padding:12px 8px; gap:8px; } .upload { padding:14px; } }
+    @media(prefers-reduced-motion:no-preference) { main { animation:appear .22s ease-out; } @keyframes appear { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } } }
+  </style>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header><div class="header-inner">
+    <img class="brand-img" src="/console.png" alt="" width="32" height="42">
+    <div><h1>R36S Saves Manager</h1><p class="brand-sub" data-i18n="brand_sub">RetroArch / Save library</p></div>
+    <div class="header-actions"><span id="mode" class="badge">Local</span><select id="language" aria-label="Language" data-i18n-aria-label="language"><option value="en" lang="en">English</option><option value="it" lang="it">Italiano</option></select><button id="logout" class="text-button" data-i18n="logout" hidden>Sign out</button></div>
+  </div></header>
+  <main>
+    <div id="error" class="notice" role="alert" hidden></div>
+    <p id="initial" class="muted" role="status" data-i18n="connecting">Connecting...</p>
+    <section id="login" class="login" hidden>
+      <h2 data-i18n="login_title">Console sign-in</h2>
+      <form id="loginForm" novalidate><label class="field" for="password" data-i18n="password">Password</label><input id="password" type="password" autocomplete="current-password" required maxlength="1024"><button id="loginButton" class="primary full" type="submit" data-i18n="login">Sign in</button></form>
+    </section>
+    <section id="app" hidden>
+      <div class="page-heading"><h2 data-i18n="page_title">Import a save</h2><span id="connection" class="muted">RetroArch</span></div>
+      <div class="layout">
+        <section class="library" aria-labelledby="libraryTitle">
+          <div class="section-heading"><span class="step">01</span><h3 id="libraryTitle" data-i18n="library_title">Target ROM</h3></div>
+          <div class="filters">
+            <div><label class="field" for="system" data-i18n="system">System</label><select id="system"></select></div>
+            <div><label class="field" for="search" data-i18n="search">Search ROMs</label><input id="search" type="search" placeholder="Game name" data-i18n-placeholder="search_placeholder" autocomplete="off"></div>
+          </div>
+          <div class="list-head"><span id="count" aria-live="polite">Library</span><span data-i18n="save">Save</span></div>
+          <div id="romList" class="rom-list" role="group" aria-label="Available ROMs" data-i18n-aria-label="available_roms"></div>
+          <div class="pagination"><button id="refresh" class="text-button" data-i18n="refresh">Refresh</button><div class="page-controls"><span id="pageLabel" class="muted"></span><button id="previous" class="icon-button" title="Previous page" aria-label="Previous page" data-i18n-title="previous" data-i18n-aria-label="previous">&larr;</button><button id="next" class="icon-button" title="Next page" aria-label="Next page" data-i18n-title="next" data-i18n-aria-label="next">&rarr;</button></div></div>
+          <section class="preview" aria-labelledby="autoStateTitle">
+            <div class="section-heading"><h3 id="autoStateTitle" data-i18n="auto_state_title">Automatic savestate</h3></div>
+            <button id="checkAutoState" class="secondary" data-i18n="auto_state_check" disabled>Check selected game</button>
+            <div id="autoStateDetails" hidden>
+              <code id="autoStatePath" class="path"></code>
+              <p id="autoStateStatus" class="preview-state" role="status"></p>
+              <div id="autoStateChecks" class="checks" hidden>
+                <label class="check"><input id="autoStateClosed" type="checkbox"><span data-i18n="game_closed">The game is closed</span></label>
+                <label class="check"><input id="autoStateConfirm" type="checkbox"><span data-i18n="auto_state_confirm">Permanently delete this .state.auto file. No backup will be kept.</span></label>
+              </div>
+              <button id="deleteAutoState" class="danger" data-i18n="auto_state_delete" disabled hidden>Delete automatic savestate</button>
+            </div>
+          </section>
+        </section>
+        <section class="import" aria-labelledby="importTitle">
+          <div class="section-heading"><span class="step">02</span><h3 id="importTitle" data-i18n="file_title">Save file</h3></div>
+          <div id="upload" class="upload"><label id="saveFileLabel" class="field" for="chooseFile">Save file</label><button id="chooseFile" type="button" data-i18n="choose_file" aria-describedby="saveFileLabel fileInfo">Choose file</button><input id="saveFile" type="file" accept=".srm,.sav" aria-labelledby="saveFileLabel" hidden><p id="fileInfo" class="file-info" aria-live="polite">No file selected</p></div>
+          <div class="selection"><span class="eyebrow" data-i18n="selected_rom">Selected ROM</span><p id="selectedName" class="selected-name">No ROM selected</p></div>
+          <button id="previewButton" class="secondary full" disabled>Preview import</button>
+          <section id="preview" class="preview" hidden aria-label="Preview import" data-i18n-aria-label="preview">
+            <span class="eyebrow" data-i18n="destination">Destination</span><code id="destination" class="path"></code>
+            <p id="saveState" class="preview-state"></p><button id="downloadCurrent" class="text-button" data-i18n="download_current" hidden>Download current save</button>
+            <div class="checks"><label class="check"><input id="closed" type="checkbox"><span data-i18n="game_closed">The game is closed</span></label><label id="overwriteLabel" class="check" hidden><input id="overwrite" type="checkbox"><span data-i18n="overwrite">Replace the existing save and keep a backup</span></label></div>
+            <button id="importButton" class="primary full" disabled data-i18n="import">Import save</button>
+          </section>
+          <div id="success" class="notice success" role="status" hidden><strong data-i18n="imported">Save imported</strong><p id="resultInfo"></p><code id="resultPath" class="path"></code><button id="downloadBackup" class="text-button" data-i18n="download_backup" hidden>Download previous backup</button></div>
+        </section>
+      </div>
+      <footer><span>R36S / SAVES MANAGER</span><span id="footerStatus" data-i18n="footer">SRAM / maximum 16 MiB</span></footer>
+    </section>
+  </main>
+</body>
+</html>

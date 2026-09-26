@@ -1,0 +1,26 @@
+[Unit]
+Description=R36S Saves Manager (on demand)
+After=network.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+User=ark
+Group=ark
+Environment=HOME=/home/ark
+Environment=PYTHONDONTWRITEBYTECODE=1
+WorkingDirectory=/home/ark/.local/share/r36s-saves-manager
+ExecStart=/usr/bin/python3 -u /home/ark/.local/share/r36s-saves-manager/R36SavesManager.py --config /home/ark/.config/r36s-saves-manager/config.json --password-file /home/ark/.config/r36s-saves-manager/password --host 0.0.0.0 --port 8765
+Restart=no
+TimeoutStartSec=15
+TimeoutStopSec=90
+KillMode=mixed
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ark/.config/retroarch/saves
+ReadWritePaths=-/home/ark/.config/retroarch/states
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX

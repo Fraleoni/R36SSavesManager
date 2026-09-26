@@ -1,0 +1,17 @@
+{
+  "rom_root": "/roms2",
+  "save_root": "~/.config/retroarch/saves",
+  "state_root": "~/.config/retroarch/states",
+  "systems": {
+    "snes": {
+      "label": "Super Nintendo",
+      "rom_extensions": [".sfc", ".smc", ".zip", ".7z"],
+      "save_extension": ".srm"
+    },
+    "psx": {
+      "label": "PlayStation",
+      "rom_extensions": [".cue", ".img", ".mdf", ".pbp", ".toc", ".cbn", ".m3u", ".ccd", ".chd", ".zip", ".7z", ".iso"],
+      "save_extension": ".srm"
+    }
+  }
+}
