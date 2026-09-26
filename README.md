@@ -1,193 +1,200 @@
 # R36S Saves Manager
 
-Interfaccia web locale, in inglese con traduzione italiana, per importare salvataggi SRAM di RetroArch
-sulla R36S. Python >= 3.9, senza pacchetti esterni, CDN o accesso a Internet.
-Python 3.13.5 e i percorsi sotto sono stati verificati via SSH sulla console.
+[Italian documentation](README-it.md)
 
-## Lingue
+A local web interface, available in English and Italian, for importing RetroArch SRAM saves
+onto the R36S. Requires Python >= 3.9, with no external packages, CDNs, or Internet access.
+Python 3.13.5 and the paths below have been verified on the console via SSH.
 
-La lingua predefinita e **English**. Il selettore nell'intestazione permette di
-passare a **Italiano** senza ricaricare la pagina, perdere il file selezionato,
-l'anteprima o le conferme. La scelta viene ricordata in questo browser tramite
-`localStorage`; se lo storage non e disponibile, resta valida per la pagina corrente.
-Nomi di ROM, file, sistemi configurati e percorsi non vengono tradotti.
+## Languages
 
-I cataloghi [locales/en.json](locales/en.json) e [locales/it.json](locales/it.json)
-contengono le stringhe dell'interfaccia, gli errori API e i messaggi Python e del menu
-Advanced. Mantenere le stesse chiavi e i parametri tra parentesi graffe, ad esempio
-`{size}`. Le chiavi mancanti in italiano usano il testo inglese. Non inserire HTML
-nelle traduzioni. Le modifiche ai cataloghi richiedono il riavvio del server.
-Entrambi i file devono essere distribuiti nella sottocartella `locales`.
+The default language is **English**. The selector in the header lets you switch to
+**Italiano** without reloading the page or losing the selected file, preview, or
+confirmations. Your choice is remembered in this browser using `localStorage`;
+if storage is unavailable, it remains valid for the current page.
+ROM names, filenames, configured system names, and paths are not translated.
 
-L'API accetta `X-Language: en` oppure `X-Language: it`; valori assenti o non
-supportati usano l'inglese. Gli errori includono `error` (testo), `error_key`
-(chiave stabile) e `parameters`, cosi la pagina puo ritradurli anche dopo la risposta.
+The [locales/en.json](locales/en.json) and [locales/it.json](locales/it.json)
+catalogs contain interface strings, API errors, Python messages, and Advanced
+menu messages. Keep the same keys and brace-delimited parameters, such as
+`{size}`. Missing Italian keys fall back to English. Do not include HTML in
+translations. Catalog changes require a server restart.
+Both files must be deployed in the `locales` subdirectory.
 
-Per i messaggi Python usare `--language it`, anche insieme a `--set-password`.
-Per il launcher impostare `R36S_LANGUAGE=it` nell'ambiente che lo avvia, ad esempio:
+The API accepts `X-Language: en` or `X-Language: it`; missing or unsupported
+values fall back to English. Errors include `error` (text), `error_key`
+(a stable key), and `parameters`, allowing the page to translate them again
+after receiving the response.
+
+For Python messages, use `--language it`, including with `--set-password`.
+For the launcher, set `R36S_LANGUAGE=it` in its environment, for example:
 
 ```bash
 R36S_LANGUAGE=it bash '/opt/system/Advanced/Saves Manager.sh' --status
 ```
 
-La lingua del browser e indipendente da quella del terminale e del menu console.
-Gli strumenti di installazione e rilascio mostrano messaggi in inglese; i messaggi
-nativi di browser, sistema operativo, argparse, SSH e systemd dipendono dai rispettivi strumenti.
+The browser language is independent of the terminal and console menu language.
+The installation and deployment tools display messages in English; native
+messages from the browser, operating system, argparse, SSH, and systemd depend
+on those tools.
 
-## Configurazione iniziale
+## Initial Configuration
 
-Il file [config.json](config.json) abilita **Super Nintendo** e **PlayStation**.
-Per Super Nintendo:
+The [config.json](config.json) file enables **Super Nintendo** and **PlayStation**.
+For Super Nintendo:
 
-- ROM: `/roms2/snes/`
-- Salvataggi: `/home/ark/.config/retroarch/saves/snes/`
-- Formato in ingresso e in uscita: `.srm`
-- Porta predefinita: `8765`, modificabile con `--port`.
+- ROMs: `/roms2/snes/`
+- Saves: `/home/ark/.config/retroarch/saves/snes/`
+- Input and output format: `.srm`
+- Default port: `8765`, configurable with `--port`.
 
-Per PlayStation: ROM in `/roms2/psx/`, salvataggi per gioco in
-`/home/ark/.config/retroarch/saves/psx/`, destinazione `<nome ROM>.srm`.
-Sono accettati `.srm` e immagini raw `.mcd` / `.mcr`. Per questi ultimi due
-formati vengono verificati dimensione esatta di 131072 byte (128 KiB), firma
-`MC` e checksum XOR dell'intestazione (primo frame da 128 byte).
-I byte vengono conservati, senza conversione o rimozione di header.
-Questi controlli non garantiscono l'integrita dei singoli salvataggi interni
-o la compatibilita con regione e revisione del gioco.
+For PlayStation: ROMs are in `/roms2/psx/`, per-game saves are in
+`/home/ark/.config/retroarch/saves/psx/`, and the destination is `<ROM name>.srm`.
+Accepted inputs are `.srm` files and raw `.mcd` / `.mcr` images. For the latter
+two formats, the application checks the exact size of 131072 bytes (128 KiB),
+the `MC` signature, and the header XOR checksum (the first 128-byte frame).
+Bytes are preserved without conversion or header removal.
+These checks do not guarantee the integrity of individual saves within the
+card or compatibility with the game's region and revision.
 
-L'importazione PSX sostituisce **l'intera memory card del gioco**, non un singolo
-slot. La precedente viene conservata nel backup quando si conferma la sostituzione.
-La seconda scheda condivisa `pcsx-card2.mcd` non e una destinazione del gestore.
-Selezionare PlayStation prima di scegliere o trascinare `.mcd` / `.mcr`.
+A PSX import replaces **the game's entire memory card**, not a single slot.
+The previous card is backed up when you confirm replacement.
+The shared second card, `pcsx-card2.mcd`, is not a destination managed by this tool.
+Select PlayStation before choosing or dragging a `.mcd` / `.mcr` file.
 
-Le impostazioni osservate sia in RetroArch sia in RetroArch32 sono:
+The settings observed in both RetroArch and RetroArch32 are:
 `sort_savefiles_by_content_enable = "true"`, `sort_savefiles_enable = "false"`,
 `savefiles_in_content_dir = "false"`.
-Il programma applica questa regola, non rilegge automaticamente gli override.
-Per una ROM in una sottocartella viene usato il nome della **cartella immediatamente
-contenente la ROM**, non tutto il percorso relativo. Ad esempio:
+The application follows this rule; it does not automatically read overrides.
+For a ROM in a subdirectory, it uses the name of the **directory immediately
+containing the ROM**, not the full relative path. For example:
 
 ```text
 /roms2/snes/Collection/Game.zip
 -> /home/ark/.config/retroarch/saves/Collection/Game.srm
 ```
 
-I percorsi assoluti o relativi sono configurabili; quelli relativi partono dalla
-cartella del file JSON. `~` si riferisce all'utente che avvia il programma:
-sulla console avviarlo come **ark**, non con sudo.
+Absolute and relative paths are configurable; relative paths are resolved from
+the JSON file's directory. `~` refers to the user running the application:
+on the console, run it as **ark**, not with sudo.
 
-## Prova sul PC
+## Try It on a PC
 
 ```powershell
 .\.venv\Scripts\python.exe R36SavesManager.py --demo
 ```
 
-Aprire <http://127.0.0.1:8765>. La demo ascolta esclusivamente su loopback e
-non richiede password. Crea tre ROM segnaposto e un salvataggio sintetico da
-8 KiB e due savestate sintetici (automatico e manuale) in una cartella temporanea,
-senza leggere `/roms2` o i salvataggi veri.
-I dati temporanei vengono eliminati all'arresto normale con Ctrl+C.
-Non contiene ROM giocabili o salvataggi del gioco originale.
+Open <http://127.0.0.1:8765>. Demo mode listens on loopback only and does not
+require a password. It creates three placeholder ROMs, a synthetic 8 KiB save,
+and two synthetic savestates (automatic and manual) in a temporary directory,
+without reading `/roms2` or real saves.
+Temporary data is removed on normal shutdown with Ctrl+C.
+The demo contains no playable ROMs or original game saves.
 
-## Installazione con menu Advanced
+## Installation with the Advanced Menu
 
-### Rilascio da Windows
+### Deploy from Windows
 
-Eseguire [packaging/deploy.ps1](packaging/deploy.ps1) da PowerShell:
+Run [packaging/deploy.ps1](packaging/deploy.ps1) from PowerShell:
 
 ```powershell
 .\packaging\deploy.ps1
 ```
 
-Lo script chiede IP IPv4, utente SSH (default `ark`), se pubblicare la
-configurazione e se avviare il servizio al termine. Prima di collegarsi chiede
-conferma: il rilascio arresta il servizio web e invalida le sessioni aperte.
-Terminare eventuali importazioni prima di procedere.
+The script asks for the IPv4 address, SSH user (default: `ark`), whether to
+publish the configuration, and whether to start the service afterward. It asks
+for confirmation before connecting: deployment stops the web service and
+invalidates open sessions. Finish any imports before proceeding.
 
-La password di accesso viene richiesta direttamente da OpenSSH, con input
-nascosto, e non viene salvata ne passata sulla riga di comando. Verifica,
-trasferimento e installazione usano **una sola connessione SSH**, quindi basta
-inserirla una volta. Se la password e errata, lo script termina e va rilanciato;
-se sono gia configurate chiavi SSH, vengono usate normalmente. Al primo
-collegamento verificare la fingerprint della console prima di accettarla.
-La password web dell'applicazione e separata e non viene modificata.
+OpenSSH requests the login password directly using hidden input; it is neither
+saved nor passed on the command line. Verification, transfer, and installation
+use **a single SSH connection**, so you only need to enter it once. If the
+password is incorrect, the script exits and must be run again; existing SSH
+keys are used normally. On the first connection, verify the console's
+fingerprint before accepting it.
+The application's web password is separate and is not changed.
 
-Richiede Windows PowerShell 5.1 o PowerShell 7, client OpenSSH e `tar.exe`
-nativi di Windows. Sulla console serve `sudo -n` senza prompt, come nella
-configurazione dArkOSen verificata. L'utente richiesto serve per autenticarsi:
-il layout di installazione e l'utente del servizio restano `/home/ark` e `ark`.
+Requires Windows PowerShell 5.1 or PowerShell 7, the native Windows OpenSSH
+client, and native Windows `tar.exe`. The console must support `sudo -n`
+without prompts, as in the verified dArkOSen configuration. The requested user
+is used for authentication: the installation layout and service user remain
+`/home/ark` and `ark`.
 
-Opzioni esplicite, mantenendo comunque la conferma prima del rilascio:
+Explicit options, still requiring confirmation before deployment:
 
 ```powershell
 .\packaging\deploy.ps1 -ConsoleIp 192.168.1.43 -SshUser ark -PublishConfig -StartService
 ```
 
-`-PublishConfig` pubblica l'intero [config.json](config.json) locale, inclusi
-i nuovi profili. Prima di sostituire la configurazione remota ne crea un backup
-privato `config.json.before-<id-rilascio>.bak`. Senza questa opzione, o rispondendo
-No al prompt, la configurazione esistente e conservata. Non viene eseguita una
-fusione dei profili: verificare prima eventuali personalizzazioni remote.
-Senza avvio finale il servizio resta fermo; non viene mai abilitato al boot.
+`-PublishConfig` publishes the entire local [config.json](config.json), including
+new profiles. Before replacing the remote configuration, it creates a private
+backup named `config.json.before-<release-id>.bak`. Without this option, or if
+you answer No at the prompt, the existing configuration is preserved. Profiles
+are not merged: check any remote customizations first.
+Without the final start step, the service remains stopped; startup at boot is
+never enabled.
 
-Per verificare il pacchetto e visualizzare i comandi senza collegarsi:
+To check the package and display the commands without connecting:
 
 ```powershell
 .\packaging\deploy.ps1 -ConsoleIp 192.168.1.43 -SshUser ark -DryRun
 ```
 
-Il trasferimento include soltanto i file runtime/installer necessari e i cataloghi,
-inviati in Base64 sullo standard input di SSH, con verifica SHA256 sulla console
-prima dell'estrazione. La codifica evita alterazioni dei byte anche in Windows
-PowerShell 5.1; non sostituisce la cifratura fornita da SSH.
-Non include password, ROM, salvataggi o
-virtualenv. I file temporanei locali vengono rimossi anche in caso di errore;
-se il trasferimento viene interrotto prima dell'installazione, il percorso
-temporaneo remoto eventualmente rimasto viene segnalato. Un errore interrompe
-il rilascio, senza dichiarare successo; non e previsto rollback automatico.
+The transfer includes only the required runtime/installer files and catalogs,
+sent as Base64 over SSH standard input, with SHA256 verification on the console
+before extraction. Encoding prevents byte corruption even in Windows
+PowerShell 5.1; it does not replace SSH encryption.
+Passwords, ROMs, saves, and virtual environments are not included.
+Local temporary files are removed even on failure; if the transfer is
+interrupted before installation, any remaining remote temporary path is
+reported. An error stops deployment without reporting success; automatic
+rollback is not provided.
 
-### Installazione manuale
+### Manual Installation
 
-Il pacchetto [packaging/install.sh](packaging/install.sh) installa una unit di
-sistema che esegue Python come `ark`, indipendente dalla sessione SSH e dal menu.
-Non avvia il server e non abilita l'avvio al boot. Richiede il layout dArkOSen
-verificato in [CONSOLE_NOTES.md](CONSOLE_NOTES.md), `systemd`, `dialog` e
+The [packaging/install.sh](packaging/install.sh) package installs a system unit
+that runs Python as `ark`, independently of the SSH session and menu.
+It does not start the server or enable startup at boot. It requires the dArkOSen
+layout verified in [CONSOLE_NOTES.md](CONSOLE_NOTES.md), `systemd`, `dialog`, and
 `/opt/inttools/gptokeyb`.
 
-Trasferire sulla console i file runtime e i cataloghi elencati nella sezione seguente
-e la directory `packaging`, mantenendo la struttura. Dalla directory trasferita:
+Transfer the runtime files and catalogs listed in the manual startup section
+below, along with the `packaging` directory, to the console, preserving the
+directory structure. From the transferred directory, run:
 
 ```bash
 sudo -n bash packaging/install.sh
 ```
 
-Destinazioni:
+Destinations:
 
 ```text
-/home/ark/.local/share/r36s-saves-manager/   codice e asset
-/home/ark/.config/r36s-saves-manager/       config.json e password
+/home/ark/.local/share/r36s-saves-manager/   code and assets
+/home/ark/.config/r36s-saves-manager/       config.json and password
 /etc/systemd/system/r36s-saves-manager.service
 /opt/system/Advanced/Saves Manager.sh
 ```
 
-Impostare la password web da un terminale SSH interattivo **come ark**, non con
-sudo. Inserirla soltanto nei prompt nascosti, mai nella riga di comando o in chat:
+Set the web password from an interactive SSH terminal **as ark**, not with
+sudo. Enter it only at the hidden prompts, never on the command line or in chat:
 
 ```bash
 python3 /home/ark/.local/share/r36s-saves-manager/R36SavesManager.py \
   --set-password --password-file /home/ark/.config/r36s-saves-manager/password
 ```
 
-La password deve avere almeno 8 caratteri ed essere diversa da quella SSH.
-Il file viene scritto atomicamente con permessi `0600` nella directory privata
-`0700`; contiene la password in chiaro ed e leggibile da `ark` e root.
-Ripetere il comando per cambiarla, poi arrestare e riavviare il servizio.
+The password must contain at least 8 characters and differ from the SSH password.
+The file is written atomically with `0600` permissions inside the private `0700`
+directory; it contains the password in plaintext and is readable by `ark` and
+root. Run the command again to change it, then stop and restart the service.
 
-Riaprire **Advanced > Saves Manager**: **Start**, **Status**, **Stop**.
-Start attende la notifica READY di systemd e verifica HTTP prima di mostrare
-l'indirizzo. Uscire dal menu lascia il server attivo. La comparsa della voce,
-la resa sul display e i pulsanti vanno verificati sulla console; non riavviare
-automaticamente il frontend per forzare un aggiornamento del menu.
+Reopen **Advanced > Saves Manager**: **Start**, **Status**, **Stop**.
+Start waits for systemd's READY notification and checks HTTP before displaying
+the address. Leaving the menu keeps the server running. The menu entry's
+visibility, display layout, and buttons must be checked on the console; do not
+automatically restart the frontend to force a menu refresh.
 
-Gli stessi controlli sono disponibili via SSH senza avviare il mapper gamepad:
+The same controls are available over SSH without starting the gamepad mapper:
 
 ```bash
 bash '/opt/system/Advanced/Saves Manager.sh' --start
@@ -196,21 +203,22 @@ bash '/opt/system/Advanced/Saves Manager.sh' --stop
 journalctl -u r36s-saves-manager.service -n 30 --no-pager
 ```
 
-Aprire l'indirizzo mostrato, normalmente <http://192.168.1.43:8765>.
-La porta e `8765`; se e occupata, l'avvio fallisce. Non viene terminato il processo
-che la occupa. La unit non contiene una sezione Install e non va abilitata al boot.
-L'arresto attende le richieste in corso, con un limite systemd di 90 secondi:
-oltre tale limite il processo viene terminato forzatamente.
+Open the displayed address, usually <http://192.168.1.43:8765>.
+The port is `8765`; if it is already in use, startup fails. The process using
+it is not terminated. The unit has no Install section and should not be enabled
+at boot. Shutdown waits for ongoing requests, with a systemd limit of 90 seconds;
+after that limit, the process is forcibly terminated.
 
-Per aggiornare, trasferire il pacchetto nuovo e rieseguire l'installer: il servizio
-viene arrestato, codice e launcher sostituiti, configurazione e password conservate.
-Riavviarlo esplicitamente. Il servizio ha accesso in scrittura solo alla directory
-salvataggi predefinita e al proprio spazio temporaneo: per cambiare `save_root`
-occorre adeguare anche `ReadWritePaths` nella unit, oltre alla configurazione JSON.
-Lo stesso vale per `state_root`: la unit consente anche la scrittura in
-`/home/ark/.config/retroarch/states`, se presente all'avvio del servizio.
+To update, transfer the new package and run the installer again: the service is
+stopped, code and launcher are replaced, and configuration and password are
+preserved. Restart it explicitly. The service's write access is restricted to
+the default save directory and its own temporary space, plus the savestate
+directory described below. Changing `save_root` requires updating
+`ReadWritePaths` in the unit as well as the JSON configuration.
+The same applies to `state_root`: the unit also allows writes to
+`/home/ark/.config/retroarch/states` if it exists when the service starts.
 
-Per disinstallare, senza eliminare salvataggi, backup, configurazione o password:
+To uninstall without deleting saves, backups, configuration, or password:
 
 ```bash
 sudo -n systemctl stop r36s-saves-manager.service
@@ -219,12 +227,12 @@ sudo -n systemctl daemon-reload
 rm -r /home/ark/.local/share/r36s-saves-manager
 ```
 
-La directory privata con configurazione e credenziale resta disponibile per
-una reinstallazione. Gli aggiornamenti del firmware potrebbero rimuovere il launcher.
+The private directory containing the configuration and credential is kept for
+reinstallation. Firmware updates may remove the launcher.
 
-## Avvio manuale alternativo
+## Alternative Manual Startup
 
-Copiare sulla console questi file, mantenendo la sottocartella `locales`:
+Copy these files to the console, preserving the `locales` subdirectory:
 
 - [R36SavesManager.py](R36SavesManager.py)
 - [config.json](config.json)
@@ -234,129 +242,135 @@ Copiare sulla console questi file, mantenendo la sottocartella `locales`:
 - [locales/en.json](locales/en.json)
 - [locales/it.json](locales/it.json)
 
-Avviare dalla console o via SSH come utente `ark`:
+Start from the console or over SSH as user `ark`:
 
 ```bash
 python3 R36SavesManager.py --host 0.0.0.0 --port 8765
 ```
 
-Impostare al prompt una password di almeno 8 caratteri, distinta da quella SSH.
-La password non viene salvata su disco. In alternativa il processo puo riceverla
-tramite la variabile d'ambiente `R36S_PASSWORD`; non inserirla nel codice o in Git.
+At the prompt, set a password containing at least 8 characters, different from
+the SSH password. The password is not saved to disk. Alternatively, the process
+can receive it through the `R36S_PASSWORD` environment variable; do not put it
+in source code or Git.
 
-Dal PC o telefono sulla stessa rete aprire <http://192.168.1.43:8765> e accedere.
-L'indirizzo IP puo cambiare se assegnato tramite DHCP. Il server resta in primo
-piano: chiudere la sessione SSH puo arrestarlo. Questa modalita non installa servizi.
-Se la porta e occupata, scegliere un'altra porta con `--port`.
+From a PC or phone on the same network, open <http://192.168.1.43:8765> and log in.
+The IP address may change if assigned through DHCP. The server runs in the
+foreground: closing the SSH session may stop it. This mode does not install
+services. If the port is already in use, choose another one with `--port`.
 
-**Solo reti fidate:** HTTP non cifra password o salvataggi. Non esporre il servizio
-su Internet e non configurare port forwarding. Il server standard Python e adatto
-a questo uso locale, non a un servizio pubblico. Per una connessione cifrata,
-avviarlo con `--host 127.0.0.1` e usare un tunnel SSH dal PC:
+**Trusted networks only:** HTTP does not encrypt passwords or saves. Do not
+expose the service to the Internet or configure port forwarding. Python's
+standard server is suitable for this local use, not for a public service.
+For an encrypted connection, start it with `--host 127.0.0.1` and use an SSH
+tunnel from your PC:
 
 ```bash
 ssh -L 8765:127.0.0.1:8765 ark@192.168.1.43
 ```
 
-Con il tunnel aperto usare <http://127.0.0.1:8765>. Il servizio accetta indirizzi IP
-locali o `localhost`, non nomi mDNS o domini personalizzati. Il login scade dopo
-30 minuti; cinque password errate bloccano nuovi tentativi da quell'IP fino alla
-fine della finestra di un minuto.
+With the tunnel open, use <http://127.0.0.1:8765>. The service accepts local IP
+addresses or `localhost`, not mDNS names or custom domains. Login expires after
+30 minutes; five incorrect passwords block new attempts from that IP until
+the end of the one-minute window.
 
-## Cancellazione savestate automatico
+## Delete an Automatic Savestate
 
-Selezionare il gioco nella libreria, poi **Automatic savestate > Check selected game**
-(in italiano **Savestate automatico > Controlla gioco selezionato**).
-Non occorre caricare un file SRAM. Verificare il percorso mostrato, confermare
-che il gioco e chiuso e accettare la cancellazione definitiva, quindi premere
+Select the game in the library, then choose **Automatic savestate > Check selected game**
+(in Italian, **Savestate automatico > Controlla gioco selezionato**).
+You do not need to upload an SRAM file. Check the displayed path, confirm that
+the game is closed, and accept permanent deletion, then press
 **Delete automatic savestate** / **Cancella savestate automatico**.
 
-Viene eliminato soltanto `<nome ROM>.state.auto`, senza backup. Ad esempio:
+Only `<ROM name>.state.auto` is deleted, without a backup. For example:
 
 ```text
 /roms2/psx/Alundra (USA).chd
 -> ~/.config/retroarch/states/psx/Alundra (USA).state.auto
 ```
 
-I file `.srm`, `.sav`, `.state`, `.state1`, le immagini `.state.auto.png` e i
-savestate degli altri giochi restano invariati. Se il file manca, non viene
-cancellato nulla. Il server richiede autenticazione, CSRF, due conferme e un
-ticket monouso valido per dieci minuti; rifiuta destinazioni ambigue, collegamenti
-simbolici e contenuto cambiato dopo la verifica. Cambiare ROM annulla le conferme.
+Files such as `.srm`, `.sav`, `.state`, `.state1`, `.state.auto.png` images, and
+other games' savestates remain unchanged. If the file is missing, nothing is
+deleted. The server requires authentication, CSRF protection, two confirmations,
+and a single-use ticket valid for ten minutes; it rejects ambiguous
+destinations, symbolic links, and content changed after the check.
+Changing the selected ROM clears the confirmations.
 
-`state_root` in [config.json](config.json) indica la directory degli stati.
-Per le configurazioni precedenti senza questa chiave viene usata la directory
-`states` accanto a `save_root`. La mappatura usa il nome della cartella immediatamente
-contenente la ROM, come per i salvataggi SRAM. Verificare che corrisponda alle
-impostazioni RetroArch: directory personalizzate, ordinamento per core e override
-non sono rilevati automaticamente. Il gioco deve essere chiuso: l'app non puo
-impedire a RetroArch di ricreare o modificare il file durante l'operazione.
+`state_root` in [config.json](config.json) specifies the savestate directory.
+For older configurations without this key, the `states` directory alongside
+`save_root` is used. Mapping uses the name of the directory immediately
+containing the ROM, just as for SRAM saves. Check that this matches the
+RetroArch settings: custom directories, sorting by core, and overrides are
+not detected automatically. The game must be closed: the app cannot prevent
+RetroArch from recreating or modifying the file during the operation.
 
-Per abilitare il permesso nella unit installata, ridistribuire anche il pacchetto
-con l'installer e riavviare il servizio. Non serve pubblicare nuovamente la
-configurazione se i percorsi sono quelli predefiniti. Se la directory `states`
-viene creata mentre il servizio e gia attivo, riavviarlo per renderla scrivibile.
+To enable permission in the installed unit, redeploy the package using the
+installer and restart the service. You do not need to republish the
+configuration if you use the default paths. If the `states` directory is
+created while the service is already running, restart it to make the directory
+writable.
 
-## Importazione
+## Import Saves
 
-1. Chiudere il gioco sulla console. Il programma non puo impedire a un emulatore
-   ancora aperto di sovrascrivere successivamente il salvataggio.
-2. Selezionare il sistema e la ROM. La ricerca include regione, revisione e sottocartella.
-3. Selezionare oppure trascinare nella pagina un solo file `.srm` o `.sav`
-  (per PSX anche `.mcd` / `.mcr` raw da 128 KiB),
-  non vuoto, massimo 16 MiB. Il trascinamento e disponibile dopo l'accesso,
-  quando non ci sono operazioni in corso. Non avvia automaticamente l'importazione.
-  Se il nome coincide
-   esattamente con una sola ROM, quella ROM viene selezionata automaticamente.
-4. Aprire l'anteprima e verificare la destinazione. Il nome originale del file
-   caricato non viene usato come percorso: conta la ROM selezionata.
-5. Confermare che il gioco e chiuso e, se necessario, la sostituzione. Importare.
+1. Close the game on the console. The application cannot prevent an emulator
+   that is still running from overwriting the save afterward.
+2. Select the system and ROM. Search includes region, revision, and subdirectory.
+3. Select or drag a single `.srm` or `.sav` file onto the page
+   (for PSX, raw 128 KiB `.mcd` / `.mcr` files are also accepted).
+   The file must be nonempty and no larger than 16 MiB. Drag and drop is
+   available after login when no operation is in progress. It does not start
+   the import automatically. If the filename exactly matches a single ROM,
+   that ROM is selected automatically.
+4. Open the preview and check the destination. The uploaded file's original
+   name is not used as a path: the selected ROM determines the destination.
+5. Confirm that the game is closed and, if necessary, approve replacement.
+   Import the save.
 
-L'anteprima scade dopo dieci minuti ed e monouso. Se il salvataggio cambia dopo
-l'anteprima, l'importazione viene rifiutata. Destinazioni ambigue tra ROM delle
-cartelle configurate sono rifiutate anziche scegliere silenziosamente.
-L'importazione mantiene i byte del file: non interpreta o converte il formato.
+The preview expires after ten minutes and can only be used once. If the save
+changes after the preview, the import is rejected. Ambiguous destinations
+among ROMs in the configured directories are rejected rather than silently
+choosing one. Import preserves the file's bytes: it does not interpret or
+convert the format.
 
-Prima di ogni sostituzione il file precedente viene copiato in:
+Before each replacement, the previous file is copied to:
 
 ```text
-<cartella del salvataggio>/.r36s-backups/<nome ROM>.srm/<data UTC>-<id>.bak
+<save directory>/.r36s-backups/<ROM name>.srm/<UTC date>-<id>.bak
 ```
 
-La scrittura usa un file temporaneo nella stessa directory e una sostituzione
-atomica. Se la creazione del backup fallisce, il salvataggio non viene sostituito.
-Questo non sostituisce un backup esterno della SD e non garantisce contro guasti
-fisici o perdita di alimentazione. I backup non vengono cancellati automaticamente.
+Writing uses a temporary file in the same directory and an atomic replacement.
+If backup creation fails, the save is not replaced. This does not replace an
+external backup of the SD card or protect against hardware failure or power
+loss. Backups are not deleted automatically.
 
-Il salvataggio attuale e scaricabile dall'anteprima; subito dopo l'importazione
-si puo scaricare il backup precedente, gia rinominato `.srm` per reimportarlo.
-I backup precedenti restano sulla SD anche dopo la chiusura della pagina:
-per recuperarli manualmente, copiarne uno sul PC e ripristinare l'estensione
-`.srm` (o `.sav` secondo il sistema) prima di caricarlo. Non e inclusa una pagina
-di gestione dello storico.
+The current save can be downloaded from the preview; immediately after import,
+you can download the previous backup, already renamed to `.srm` for reimport.
+Older backups remain on the SD card even after the page is closed. To recover
+one manually, copy it to your PC and restore the `.srm` extension (or `.sav`,
+depending on the system) before uploading it. A backup history management page
+is not included.
 
-## Compatibilita e altri sistemi
+## Compatibility and Other Systems
 
-Il file PocketSNES di Zelda da 8 KiB e plausibilmente un salvataggio SRAM compatibile,
-ma non e stato importato o provato nel gioco. Usare la stessa ROM, regione e revisione.
-I test automatici usano dati sintetici, non il file allegato.
+The 8 KiB PocketSNES Zelda file appears likely to be a compatible SRAM save,
+but it has not been imported or tested in-game. Use the same ROM, region, and
+revision. Automated tests use synthetic data, not the supplied file.
 
-- Non sono supportati save state `.state`, conversioni tra formati, esportazioni
-  con header, destinazioni memory card condivise o file `.bin` e salvataggi
-  di emulatori standalone. `.mcd` / `.mcr` raw sono ammessi solo come ingresso PSX
-  verso il file `.srm` del gioco, con i controlli descritti sopra.
-- Un `.sav` non viene automaticamente rinominato `.srm`: tranne gli ingressi
-  PSX `.mcd` / `.mcr`, estensione sorgente e formato configurato devono coincidere.
-  Un'estensione corretta non prova che il
-  contenuto sia valido; non viene verificato il checksum interno del gioco.
-- Per archivi con nomi interni differenti, giochi multidisco, playlist e override
-  specifici verificare prima il percorso di un salvataggio prodotto dall'emulatore.
-  Il programma usa il nome dell'archivio senza la sua ultima estensione.
-- Non modificare le impostazioni di ordinamento di RetroArch senza adeguare il
-  gestore. L'auto-rilevamento dei core e dei loro override non e implementato.
+- Importing `.state` savestates, format conversion, exports with headers,
+  shared memory card destinations, `.bin` files, and saves from standalone
+  emulators are not supported. Raw `.mcd` / `.mcr` files are accepted only as
+  PSX inputs targeting the game's `.srm` file, with the checks described above.
+- A `.sav` file is not automatically renamed to `.srm`: except for PSX
+  `.mcd` / `.mcr` inputs, the source extension and configured format must match.
+  A correct extension does not prove that the content is valid; the game's
+  internal checksum is not checked.
+- For archives with different internal names, multidisc games, playlists, and
+  specific overrides, first check the path of a save produced by the emulator.
+  The application uses the archive's name without its final extension.
+- Do not change RetroArch's sorting settings without updating the manager.
+  Automatic detection of cores and their overrides is not implemented.
 
-Per aggiungere un sistema, inserire una voce in `systems` e riavviare. Ad esempio,
-**dopo aver verificato che il core GBA usi `.srm` e la stessa regola di percorso**:
+To add a system, add an entry to `systems` and restart. For example,
+**after verifying that the GBA core uses `.srm` and the same path rule**:
 
 ```json
 "gba": {
@@ -366,15 +380,15 @@ Per aggiungere un sistema, inserire una voce in `systems` e riavviare. Ad esempi
 }
 ```
 
-## Verifiche locali
+## Local Checks
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest test_saves -v
 ```
 
-I test coprono integrita byte per byte, rinomina, sottocartelle, nomi ambigui,
-backup, modifiche dopo l'anteprima, errori di scrittura, percorsi non sicuri,
-login, CSRF, API di importazione/download, password privata, notifica systemd
-simulata e attesa delle richieste durante l'arresto. I test PSX coprono ingressi
-`.mcd` / `.mcr`, controlli raw via API, backup e scheda condivisa invariata.
-Nessun test accede alla console.
+Tests cover byte-for-byte integrity, renaming, subdirectories, ambiguous names,
+backups, changes after preview, write failures, unsafe paths, login, CSRF,
+import/download APIs, the private password file, simulated systemd notification,
+and waiting for requests during shutdown. PSX tests cover `.mcd` / `.mcr`
+inputs, raw validation through the API, backups, and preserving the shared card.
+No test accesses the console.
